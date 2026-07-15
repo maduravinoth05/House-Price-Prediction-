@@ -1,0 +1,163 @@
+"""
+House Price Prediction
+-----------------------
+A simple machine learning project that predicts house prices based on
+features such as area, number of bedrooms/bathrooms, stories, age of the
+house, and locality score.
+
+Author : <Your Name>
+Purpose: Online Internship Project - House Price Prediction
+"""
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+
+def generate_dataset(n_samples: int = 500, seed: int = 42) -> pd.DataFrame:
+    """
+    Generates a synthetic but realistic house-price dataset.
+    (In a real project you would replace this with pd.read_csv("house_data.csv"))
+    """
+    rng = np.random.default_rng(seed)
+
+    area = rng.integers(500, 4500, n_samples)                     # sq. ft.
+    bedrooms = rng.integers(1, 6, n_samples)
+    bathrooms = rng.integers(1, 4, n_samples)
+    stories = rng.integers(1, 4, n_samples)
+    age = rng.integers(0, 40, n_samples)                          # years
+    locality_score = rng.integers(1, 10, n_samples)                # 1 (low) - 10 (prime)
+    parking = rng.integers(0, 3, n_samples)
+
+    # A synthetic (but reasonable) price formula + noise
+    price = (
+        area * 120
+        + bedrooms * 150000
+        + bathrooms * 100000
+        + stories * 50000
+        - age * 8000
+        + locality_score * 200000
+        + parking * 75000
+        + rng.normal(0, 150000, n_samples)          # random noise
+    )
+    price = np.clip(price, 500000, None)             # no negative/unrealistic prices
+
+    df = pd.DataFrame({
+        "Area_sqft": area,
+        "Bedrooms": bedrooms,
+        "Bathrooms": bathrooms,
+        "Stories": stories,
+        "Age_years": age,
+        "Locality_Score": locality_score,
+        "Parking_Spaces": parking,
+        "Price": price.round(0)
+    })
+    return df
+
+
+def train_and_evaluate(df: pd.DataFrame):
+    X = df.drop(columns=["Price"])
+    y = df["Price"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    models = {
+        "Linear Regression": LinearRegression(),
+        "Random Forest": RandomForestRegressor(n_estimators=200, random_state=42),
+    }
+
+    results = {}
+    for name, model in models.items():
+        if name == "Linear Regression":
+            model.fit(X_train_scaled, y_train)
+            preds = model.predict(X_test_scaled)
+        else:
+            model.fit(X_train, y_train)
+            preds = model.predict(X_test)
+
+        mae = mean_absolute_error(y_test, preds)
+        rmse = np.sqrt(mean_squared_error(y_test, preds))
+        r2 = r2_score(y_test, preds)
+
+        results[name] = {"model": model, "MAE": mae, "RMSE": rmse, "R2": r2}
+
+    return results, X_test, y_test, scaler
+
+
+def predict_new_house(model, scaler, is_linear, house: dict):
+    df_house = pd.DataFrame([house])
+    if is_linear:
+        df_house_scaled = scaler.transform(df_house)
+        return model.predict(df_house_scaled)[0]
+    return model.predict(df_house)[0]
+
+
+def main():
+    print("=" * 60)
+    print(" HOUSE PRICE PREDICTION SYSTEM ".center(60, "="))
+    print("=" * 60)
+
+    print("\n[1] Generating dataset...")
+    df = generate_dataset()
+    print(f"    Dataset shape: {df.shape}")
+    print("\nSample data:\n")
+    print(df.head())
+
+    print("\n[2] Training models...")
+    results, X_test, y_test, scaler = train_and_evaluate(df)
+
+    print("\n[3] Model Evaluation Results")
+    print("-" * 60)
+    print(f"{'Model':<20}{'MAE':>15}{'RMSE':>15}{'R2 Score':>10}")
+    print("-" * 60)
+    for name, res in results.items():
+        print(f"{name:<20}{res['MAE']:>15,.2f}{res['RMSE']:>15,.2f}{res['R2']:>10.4f}")
+
+    best_model_name = max(results, key=lambda k: results[k]["R2"])
+    print(f"\nBest performing model: {best_model_name} "
+          f"(R2 = {results[best_model_name]['R2']:.4f})")
+
+    print("\n[4] Sample Predictions vs Actual (Random Forest)")
+    print("-" * 60)
+    rf_model = results["Random Forest"]["model"]
+    sample_X = X_test.head(5)
+    sample_y = y_test.head(5).values
+    sample_preds = rf_model.predict(sample_X)
+    for i in range(5):
+        print(f"  Actual: ₹{sample_y[i]:>12,.0f}   Predicted: ₹{sample_preds[i]:>12,.0f}")
+
+    print("\n[5] Predicting price for a new house")
+    new_house = {
+        "Area_sqft": 2200,
+        "Bedrooms": 3,
+        "Bathrooms": 2,
+        "Stories": 2,
+        "Age_years": 5,
+        "Locality_Score": 8,
+        "Parking_Spaces": 2,
+    }
+    print("    Input features:", new_house)
+
+    lr_pred = predict_new_house(results["Linear Regression"]["model"], scaler, True, new_house)
+    rf_pred = predict_new_house(results["Random Forest"]["model"], scaler, False, new_house)
+
+    print(f"\n    Linear Regression Predicted Price : ₹{lr_pred:,.0f}")
+    print(f"    Random Forest Predicted Price     : ₹{rf_pred:,.0f}")
+
+    print("\n" + "=" * 60)
+    print(" DONE ".center(60, "="))
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
