@@ -1,0 +1,32 @@
+## 📈 Sample Output
+
+```
+============================================================
+============== HOUSE PRICE PREDICTION SYSTEM ===============
+============================================================
+
+[1] Generating dataset...
+    Dataset shape: (500, 8)
+
+[2] Training models...
+
+[3] Model Evaluation Results
+------------------------------------------------------------
+Model                           MAE           RMSE  R2 Score
+------------------------------------------------------------
+Linear Regression        107,483.37     135,541.13    0.9562
+Random Forest            164,176.84     204,550.67    0.9002
+
+Best performing model: Linear Regression (R2 = 0.9562)
+
+[5] Predicting price for a new house
+    Input features: {'Area_sqft': 2200, 'Bedrooms': 3, 'Bathrooms': 2,
+    'Stories': 2, 'Age_years': 5, 'Locality_Score': 8, 'Parking_Spaces': 2}
+
+    Linear Regression Predicted Price : ₹2,723,503
+    Random Forest Predicted Price     : ₹2,611,164
+
+============================================================
+=========================== DONE ===========================
+============================================================
+```
